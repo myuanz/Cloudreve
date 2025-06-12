@@ -115,10 +115,9 @@ func (service *ShareCreateService) Create(c *gin.Context) serializer.Response {
 	}
 
 	// 强制密码分享
-	if conf.SystemConfig.StealthShare {
-		if service.Password == "" {
-			service.Password = util.RandStringRunes(6)
-		}
+	commonPasswords := []string{"", "123123", "1234", "123456", "12345678", "123456789", "1234567890"}
+	if conf.SystemConfig.StealthShare && util.ContainsString(commonPasswords, service.Password) {
+		service.Password = util.RandStringRunes(8)
 	}
 
 	newShare := model.Share{

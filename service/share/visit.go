@@ -3,8 +3,10 @@ package share
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
 	"path"
+	"time"
 
 	model "github.com/cloudreve/Cloudreve/v3/models"
 	"github.com/cloudreve/Cloudreve/v3/pkg/conf"
@@ -15,6 +17,7 @@ import (
 	"github.com/cloudreve/Cloudreve/v3/pkg/util"
 	"github.com/cloudreve/Cloudreve/v3/service/explorer"
 	"github.com/gin-gonic/gin"
+	"github.com/jinzhu/gorm"
 )
 
 // ShareUserGetService 获取用户的分享服务
@@ -99,7 +102,45 @@ func (service *ShareUserGetService) Get(c *gin.Context) serializer.Response {
 // Search 搜索公共分享
 func (service *ShareListService) Search(c *gin.Context) serializer.Response {
 	if conf.SystemConfig.StealthShare {
-		return serializer.Err(serializer.CodeNotFound, "", nil)
+		// 构造两个公告分享
+		fakeFileZh := model.File{
+			Name: "没有搜索权限",
+			Size: 0,
+		}
+		fakeFileZh.ID = 1
+
+		fakeFileEn := model.File{
+			Name: "Permission required to search",
+			Size: 0,
+		}
+		fakeFileEn.ID = 2
+
+		fakeShares := []model.Share{
+			{
+				Model: gorm.Model{
+					ID: math.MaxUint32,
+				},
+				Password: "",
+				IsDir:    true,
+				File:     fakeFileZh,
+				SourceID: 1,
+			},
+			{
+				Model: gorm.Model{
+					ID: math.MaxUint32,
+				},
+				Password: "",
+				IsDir:    true,
+				File:     fakeFileEn,
+				SourceID: 2,
+			},
+		}
+
+		// 设置创建时间为一百年后
+		fakeShares[0].CreatedAt = time.Now().AddDate(99, 0, 0)
+		fakeShares[1].CreatedAt = time.Now().AddDate(99, 0, 0)
+
+		return serializer.BuildShareList(fakeShares, 2)
 	}
 	// 列出分享
 	shares, total := model.SearchShares(int(service.Page), 18, service.OrderBy+" "+

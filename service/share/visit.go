@@ -7,6 +7,7 @@ import (
 	"path"
 
 	model "github.com/cloudreve/Cloudreve/v3/models"
+	"github.com/cloudreve/Cloudreve/v3/pkg/conf"
 	"github.com/cloudreve/Cloudreve/v3/pkg/filesystem"
 	"github.com/cloudreve/Cloudreve/v3/pkg/filesystem/fsctx"
 	"github.com/cloudreve/Cloudreve/v3/pkg/hashid"
@@ -57,6 +58,13 @@ func (service *ShareUserGetService) Get(c *gin.Context) serializer.Response {
 		return serializer.Err(serializer.CodeNotFound, "", err)
 	}
 
+	if conf.SystemConfig.StealthShare {
+		current, exists := c.Get("user")
+		if !exists || (current.(*model.User).ID != user.ID && current.(*model.User).Group.ID != 1 && current.(*model.User).ID != 1) {
+			return serializer.Err(serializer.CodeNotFound, "", nil)
+		}
+	}
+
 	// 列出分享
 	hotNum := model.GetIntSetting("hot_share_num", 10)
 	if service.Type == "default" {
@@ -90,6 +98,9 @@ func (service *ShareUserGetService) Get(c *gin.Context) serializer.Response {
 
 // Search 搜索公共分享
 func (service *ShareListService) Search(c *gin.Context) serializer.Response {
+	if conf.SystemConfig.StealthShare {
+		return serializer.Err(serializer.CodeNotFound, "", nil)
+	}
 	// 列出分享
 	shares, total := model.SearchShares(int(service.Page), 18, service.OrderBy+" "+
 		service.Order, service.Keywords)

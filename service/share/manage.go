@@ -5,8 +5,10 @@ import (
 	"time"
 
 	model "github.com/cloudreve/Cloudreve/v3/models"
+	"github.com/cloudreve/Cloudreve/v3/pkg/conf"
 	"github.com/cloudreve/Cloudreve/v3/pkg/hashid"
 	"github.com/cloudreve/Cloudreve/v3/pkg/serializer"
+	"github.com/cloudreve/Cloudreve/v3/pkg/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -112,6 +114,13 @@ func (service *ShareCreateService) Create(c *gin.Context) serializer.Response {
 		return serializer.Err(serializer.CodeNotFound, "", nil)
 	}
 
+	// 强制密码分享
+	if conf.SystemConfig.StealthShare {
+		if service.Password == "" {
+			service.Password = util.RandStringRunes(6)
+		}
+	}
+
 	newShare := model.Share{
 		Password:        service.Password,
 		IsDir:           service.IsDir,
@@ -141,6 +150,12 @@ func (service *ShareCreateService) Create(c *gin.Context) serializer.Response {
 	siteURL := model.GetSiteURL()
 	sharePath, _ := url.Parse("/s/" + uid)
 	shareURL := siteURL.ResolveReference(sharePath)
+
+	if service.Password != "" {
+		q := shareURL.Query()
+		q.Set("password", service.Password)
+		shareURL.RawQuery = q.Encode()
+	}
 
 	return serializer.Response{
 		Code: 0,
